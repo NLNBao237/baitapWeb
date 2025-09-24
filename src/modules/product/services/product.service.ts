@@ -1,7 +1,7 @@
 	import { Injectable } from '@nestjs/common';
 	import { InjectModel } from '@nestjs/mongoose';
 	import { Model } from 'mongoose';
-	import { Product } from './product.schema';
+	import { Product } from '../product.schema';
 
 	@Injectable()
 	export class ProductService {
@@ -15,8 +15,17 @@
 			return createdProduct.save();
 		}
 
-		findAll(): Promise<Product[]> {
-			return this.productModel.find().exec();
+		async findAll(search?: string, page: number = 1, limit: number = 10): Promise<{ data: Product[]; total: number; page: number; limit: number }> {
+			const query: any = {};
+			if (search) {
+				query.name = { $regex: search, $options: 'i' };
+			}
+			const skip = (page - 1) * limit;
+			const [data, total] = await Promise.all([
+				this.productModel.find(query).skip(skip).limit(limit).exec(),
+				this.productModel.countDocuments(query)
+			]);
+			return { data, total, page, limit };
 		}
 
 		findOne(id: string): Promise<Product | null> {
